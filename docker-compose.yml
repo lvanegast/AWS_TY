@@ -23,6 +23,21 @@ services:
       retries: 5
       start_period: 15s
 
+  dashboard:
+    container_name: aws-local-dashboard
+    build:
+      context: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - DASHBOARD_PORT=3000
+    depends_on:
+      - localstack
+    networks:
+      - aws-local-net
+
 networks:
   aws-local-net:
     name: aws-local-net

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Local Hub | Consola de Gestión</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aws: {
+              orange: '#FF9900',
+              blue: '#1A2433',
+              dark: '#0F172A',
+              card: '#1E293B',
+              border: '#334155'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="h-9 w-9 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-xl flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-orange-500/20">
+        ☁️
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white flex items-center gap-2">
+          AWS Local Console <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Hub LocalStack</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 font-mono">http://localhost:4566 &bull; Región: us-east-1</p>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center space-x-3">
+      <div id="connectionBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-800 text-emerald-400 text-xs font-semibold">
+        <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Conectado</span>
+      </div>
+      <button onclick="refreshCurrentTab()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+        <span>🔄</span> <span>Refrescar</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- App Body: Sidebar + Main Content -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-1 shrink-0 hidden md:block">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">Servicios AWS</div>
+      
+      <button onclick="switchTab('overview')" id="nav-overview" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition text-left cursor-pointer bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <span class="text-base">🏠</span> <span>Tablero General</span>
+      </button>
+
+      <button onclick="switchTab('s3')" id="nav-s3" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">📦</span> <span>Amazon S3</span>
+        <span id="badge-s3" class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0</span>
+      </button>
+
+      <button onclick="switchTab('dynamodb')" id="nav-dynamodb" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">🗄️</span> <span>DynamoDB</span>
+        <span id="badge-dynamodb" class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0</span>
+      </button>
+
+      <button onclick="switchTab('sqs')" id="nav-sqs" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">📨</span> <span>SQS & SNS</span>
+        <span id="badge-sqs" class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0</span>
+      </button>
+
+      <button onclick="switchTab('lambda')" id="nav-lambda" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">⚡</span> <span>AWS Lambda</span>
+        <span id="badge-lambda" class="ml-auto text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">0</span>
+      </button>
+
+      <button onclick="switchTab('secrets')" id="nav-secrets" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">🔐</span> <span>Secrets Manager</span>
+      </button>
+
+      <div class="pt-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">Proyectos del Workspace</div>
+
+      <button onclick="switchTab('projects')" id="nav-projects" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+        <span class="text-base">🚀</span> <span>Proyectos & Demos</span>
+      </button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-6 overflow-y-auto max-w-7xl">
+
+      <!-- ======================================================== -->
+      <!-- TAB 1: OVERVIEW -->
+      <!-- ======================================================== -->
+      <section id="tab-overview" class="space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Tablero General de AWS Local</h2>
+          <p class="text-sm text-slate-400">Estado en tiempo real de los servicios emulados en LocalStack.</p>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div onclick="switchTab('s3')" class="p-5 bg-slate-900 border border-slate-800 rounded-2xl cursor-pointer hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+              <span>AMAZON S3</span>
+              <span class="text-xl">📦</span>
+            </div>
+            <div id="stat-s3-count" class="text-3xl font-extrabold text-white">0</div>
+            <span class="text-xs text-slate-500 mt-1 block">Buckets creados</span>
+          </div>
+
+          <div onclick="switchTab('dynamodb')" class="p-5 bg-slate-900 border border-slate-800 rounded-2xl cursor-pointer hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+              <span>DYNAMODB</span>
+              <span class="text-xl">🗄️</span>
+            </div>
+            <div id="stat-dynamo-count" class="text-3xl font-extrabold text-white">0</div>
+            <span class="text-xs text-slate-500 mt-1 block">Tablas NoSQL</span>
+          </div>
+
+          <div onclick="switchTab('sqs')" class="p-5 bg-slate-900 border border-slate-800 rounded-2xl cursor-pointer hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+              <span>AMAZON SQS</span>
+              <span class="text-xl">📨</span>
+            </div>
+            <div id="stat-sqs-count" class="text-3xl font-extrabold text-white">0</div>
+            <span class="text-xs text-slate-500 mt-1 block">Colas de mensajes</span>
+          </div>
+
+          <div onclick="switchTab('lambda')" class="p-5 bg-slate-900 border border-slate-800 rounded-2xl cursor-pointer hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+              <span>AWS LAMBDA</span>
+              <span class="text-xl">⚡</span>
+            </div>
+            <div id="stat-lambda-count" class="text-3xl font-extrabold text-white">0</div>
+            <span class="text-xs text-slate-500 mt-1 block">Funciones desplegadas</span>
+          </div>
+        </div>
+
+        <!-- Services Health Grid -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <span>📡</span> Salud de los Servicios Emulados
+          </h3>
+          <div id="servicesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <!-- Rellenado por JS -->
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 animate-pulse text-xs text-slate-500">Cargando servicios...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 2: AMAZON S3 -->
+      <!-- ======================================================== -->
+      <section id="tab-s3" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-bold text-white">Amazon S3 Explorer</h2>
+            <p class="text-sm text-slate-400">Inspecciona buckets y los archivos almacenados en LocalStack.</p>
+          </div>
+        </div>
+
+        <div id="s3BucketsList" class="space-y-4">
+          <!-- Rellenado por JS -->
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 3: DYNAMODB -->
+      <!-- ======================================================== -->
+      <section id="tab-dynamodb" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-white">Amazon DynamoDB Explorer</h2>
+            <p class="text-sm text-slate-400">Explora tablas NoSQL y consulta registros en tiempo real.</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <select id="dynamoTableSelect" onchange="loadDynamoItems(this.value)" class="bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2 text-white focus:outline-none focus:border-amber-500">
+              <option value="">Selecciona una tabla...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="dynamoContent" class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <p class="text-sm text-slate-500 text-center py-8">Selecciona una tabla para ver sus registros.</p>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 4: SQS & SNS -->
+      <!-- ======================================================== -->
+      <section id="tab-sqs" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Amazon SQS & SNS Explorer</h2>
+          <p class="text-sm text-slate-400">Inspecciona el tráfico de mensajería asíncrona y pub/sub.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Colas SQS -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>📨</span> Colas SQS Activas
+            </h3>
+            <div id="sqsList" class="space-y-3">
+              <!-- Rellenado por JS -->
+            </div>
+          </div>
+
+          <!-- Tópicos SNS -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>📢</span> Tópicos SNS & Suscripciones
+            </h3>
+            <div id="snsList" class="space-y-3">
+              <!-- Rellenado por JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 5: LAMBDA -->
+      <!-- ======================================================== -->
+      <section id="tab-lambda" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white">AWS Lambda Explorer</h2>
+          <p class="text-sm text-slate-400">Funciones serverless ejecutándose en contenedores locales.</p>
+        </div>
+
+        <div id="lambdaList" class="space-y-4">
+          <!-- Rellenado por JS -->
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 6: SECRETS -->
+      <!-- ======================================================== -->
+      <section id="tab-secrets" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white">AWS Secrets Manager</h2>
+          <p class="text-sm text-slate-400">Credenciales y variables de configuración cifradas.</p>
+        </div>
+
+        <div id="secretsList" class="space-y-3">
+          <!-- Rellenado por JS -->
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- TAB 7: PROJECTS -->
+      <!-- ======================================================== -->
+      <section id="tab-projects" class="hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Proyectos Integrados del Workspace</h2>
+          <p class="text-sm text-slate-400">Acceso rápido a las aplicaciones desarrolladas en el Hub.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Proyecto 4: URL Shortener -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">🔗</span>
+              <span class="text-xs px-2.5 py-1 bg-amber-500/20 text-amber-400 font-semibold rounded-full border border-amber-500/30">Serverless UI</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Proyecto 4: URL Shortener & Analytics</h3>
+            <p class="text-xs text-slate-400 mb-4">Acortador con frontend en S3, 4 Lambdas, DynamoDB y buffer SQS.</p>
+            <a href="http://localhost:4566/dev-shortener-web/index.html" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold rounded-xl transition">
+              <span>🚀 Abrir Web del Acortador</span>
+            </a>
+          </div>
+
+          <!-- Proyecto 2: Container API -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">🌐</span>
+              <span class="text-xs px-2.5 py-1 bg-blue-500/20 text-blue-400 font-semibold rounded-full border border-blue-500/30">Microservicio Docker</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Proyecto 2: Microservicio Catalog API</h3>
+            <p class="text-xs text-slate-400 mb-4">API REST containerizada conectada a Secrets Manager y DynamoDB en puerto 8080.</p>
+            <a href="http://localhost:8080/health" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition">
+              <span>🔍 Ver Healthcheck (:8080)</span>
+            </a>
+          </div>
+
+          <!-- Proyecto 1: Serverless Pipeline -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">⚡</span>
+              <span class="text-xs px-2.5 py-1 bg-purple-500/20 text-purple-400 font-semibold rounded-full border border-purple-500/30">Event-Driven</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Proyecto 1: S3 + Lambda Audit Pipeline</h3>
+            <p class="text-xs text-slate-400 mb-4">Procesamiento de archivos en S3 y guardado en DynamoDB.</p>
+            <span class="text-[11px] font-mono text-slate-500">.\projects\01-serverless-pipeline\test-pipeline.ps1</span>
+          </div>
+
+          <!-- Proyecto 3: Pub/Sub Fan-Out -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">📢</span>
+              <span class="text-xs px-2.5 py-1 bg-emerald-500/20 text-emerald-400 font-semibold rounded-full border border-emerald-500/30">Pub/Sub</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Proyecto 3: SNS Fan-Out a SQS</h3>
+            <p class="text-xs text-slate-400 mb-4">Desacoplamiento asíncrono para facturación y logística.</p>
+            <span class="text-[11px] font-mono text-slate-500">.\projects\03-event-pubsub\verify-queues.ps1</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    let currentTab = 'overview';
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('aside button').forEach(btn => {
+        btn.className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-left cursor-pointer text-slate-400 hover:text-slate-100 hover:bg-slate-800/60";
+      });
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition text-left cursor-pointer bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      }
+
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      const activeSec = document.getElementById(`tab-${tabId}`);
+      if (activeSec) activeSec.classList.remove('hidden');
+
+      loadTabData(tabId);
+    }
+
+    function refreshCurrentTab() {
+      loadTabData(currentTab);
+    }
+
+    async function loadTabData(tabId) {
+      if (tabId === 'overview') await loadOverview();
+      else if (tabId === 's3') await loadS3();
+      else if (tabId === 'dynamodb') await loadDynamoTables();
+      else if (tabId === 'sqs') await loadSQS();
+      else if (tabId === 'lambda') await loadLambdas();
+      else if (tabId === 'secrets') await loadSecrets();
+    }
+
+    // 1. Overview
+    async function loadOverview() {
+      try {
+        const res = await fetch('/api/overview');
+        const data = await res.json();
+        
+        document.getElementById('stat-s3-count').textContent = data.counts.s3_buckets || 0;
+        document.getElementById('stat-dynamo-count').textContent = data.counts.dynamodb_tables || 0;
+        document.getElementById('stat-sqs-count').textContent = data.counts.sqs_queues || 0;
+        document.getElementById('stat-lambda-count').textContent = data.counts.lambda_functions || 0;
+
+        document.getElementById('badge-s3').textContent = data.counts.s3_buckets || 0;
+        document.getElementById('badge-dynamodb').textContent = data.counts.dynamodb_tables || 0;
+        document.getElementById('badge-sqs').textContent = data.counts.sqs_queues || 0;
+        document.getElementById('badge-lambda').textContent = data.counts.lambda_functions || 0;
+
+        // Render health grid
+        const grid = document.getElementById('servicesGrid');
+        grid.innerHTML = '';
+        const services = data.services || {};
+        for (const [name, status] of Object.entries(services)) {
+          const isOk = status === 'running' || status === 'available';
+          const card = document.createElement('div');
+          card.className = "p-3 rounded-xl border flex items-center justify-between " + 
+            (isOk ? "bg-slate-950 border-slate-800" : "bg-slate-950/40 border-slate-900 opacity-50");
+          card.innerHTML = `
+            <span class="font-mono text-xs font-semibold ${isOk ? 'text-slate-200' : 'text-slate-500'}">${name}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${isOk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}">
+              ${status}
+            </span>
+          `;
+          grid.appendChild(card);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 2. S3
+    async function loadS3() {
+      const container = document.getElementById('s3BucketsList');
+      container.innerHTML = '<div class="text-sm text-slate-400 p-4">Cargando buckets...</div>';
+      try {
+        const res = await fetch('/api/s3');
+        const data = await res.json();
+        if (!data.buckets || data.buckets.length === 0) {
+          container.innerHTML = '<div class="text-sm text-slate-500 p-6 bg-slate-900 rounded-xl">No hay buckets S3 creados aún.</div>';
+          return;
+        }
+
+        container.innerHTML = data.buckets.map(b => `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <span class="text-xl">📦</span>
+                <div>
+                  <h4 class="font-bold text-white font-mono text-sm">${b.name}</h4>
+                  <span class="text-xs text-slate-500">Creado: ${b.created_at.split('T')[0]} &bull; ${b.object_count} objeto(s)</span>
+                </div>
+              </div>
+              <a href="http://localhost:4566/${b.name}/index.html" target="_blank" class="text-xs font-medium text-amber-400 hover:underline">
+                Abrir URL Local ↗
+              </a>
+            </div>
+
+            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800/80">
+              ${b.objects.length === 0 ? '<span class="text-xs text-slate-600">Bucket vacío</span>' : `
+                <div class="space-y-1.5">
+                  ${b.objects.map(o => `
+                    <div class="flex items-center justify-between text-xs font-mono py-1 border-b border-slate-900 last:border-0">
+                      <span class="text-slate-300">📄 ${o.key}</span>
+                      <span class="text-slate-500">${(o.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = `<div class="text-sm text-rose-400 p-4">Error cargando S3: ${e.message}</div>`;
+      }
+    }
+
+    // 3. DynamoDB
+    async function loadDynamoTables() {
+      try {
+        const res = await fetch('/api/dynamodb');
+        const data = await res.json();
+        const select = document.getElementById('dynamoTableSelect');
+        select.innerHTML = '<option value="">Selecciona una tabla...</option>' + 
+          (data.tables || []).map(t => `<option value="${t}">${t}</option>`).join('');
+        
+        if (data.tables && data.tables.length > 0) {
+          select.value = data.tables[0];
+          loadDynamoItems(data.tables[0]);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadDynamoItems(tableName) {
+      if (!tableName) return;
+      const content = document.getElementById('dynamoContent');
+      content.innerHTML = '<div class="text-sm text-slate-400 py-6 text-center">Cargando registros...</div>';
+      try {
+        const res = await fetch(`/api/dynamodb?table=${encodeURIComponent(tableName)}`);
+        const data = await res.json();
+        const items = data.items || [];
+
+        if (items.length === 0) {
+          content.innerHTML = `<div class="text-sm text-slate-500 py-6 text-center">La tabla <strong>${tableName}</strong> no tiene registros aún.</div>`;
+          return;
+        }
+
+        const headers = Object.keys(items[0]);
+        content.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tabla: <span class="text-amber-400">${tableName}</span> (${items.length} filas)</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                <tr>
+                  ${headers.map(h => `<th class="py-2.5 px-3 uppercase">${h}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                ${items.map(it => `
+                  <tr class="hover:bg-slate-950/60 transition">
+                    ${headers.map(h => `<td class="py-2.5 px-3 text-slate-300 max-w-xs truncate">${typeof it[h] === 'object' ? JSON.stringify(it[h]) : it[h]}</td>`).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (e) {
+        content.innerHTML = `<div class="text-sm text-rose-400 py-4">Error: ${e.message}</div>`;
+      }
+    }
+
+    // 4. SQS & SNS
+    async function loadSQS() {
+      try {
+        const resSQS = await fetch('/api/sqs');
+        const dataSQS = await resSQS.json();
+        const sqsList = document.getElementById('sqsList');
+        
+        sqsList.innerHTML = (dataSQS.queues || []).length === 0 ? 
+          '<div class="text-xs text-slate-500">No hay colas SQS creadas.</div>' :
+          dataSQS.queues.map(q => `
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-white text-xs font-mono block">${q.name}</span>
+                <span class="text-[10px] text-slate-500 truncate block max-w-xs">${q.arn}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold">${q.messages} msgs</span>
+              </div>
+            </div>
+          `).join('');
+
+        const resSNS = await fetch('/api/sns');
+        const dataSNS = await resSNS.json();
+        const snsList = document.getElementById('snsList');
+        snsList.innerHTML = (dataSNS.topics || []).length === 0 ?
+          '<div class="text-xs text-slate-500">No hay tópicos SNS creados.</div>' :
+          dataSNS.topics.map(t => `
+            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
+              <span class="font-bold text-white text-xs font-mono block">${t.TopicArn.split(':').pop()}</span>
+              <span class="text-[10px] text-slate-500 font-mono">${t.TopicArn}</span>
+            </div>
+          `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 5. Lambda
+    async function loadLambdas() {
+      const container = document.getElementById('lambdaList');
+      container.innerHTML = '<div class="text-sm text-slate-400 p-4">Cargando Lambdas...</div>';
+      try {
+        const res = await fetch('/api/lambdas');
+        const data = await res.json();
+        if (!data.functions || data.functions.length === 0) {
+          container.innerHTML = '<div class="text-sm text-slate-500 p-6 bg-slate-900 rounded-xl">No hay funciones Lambda desplegadas.</div>';
+          return;
+        }
+
+        container.innerHTML = data.functions.map(fn => `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+              <span class="text-xl">⚡</span>
+              <div>
+                <h4 class="font-bold text-white font-mono text-sm">${fn.name}</h4>
+                <div class="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                  <span class="px-2 py-0.5 rounded bg-slate-950 font-mono">${fn.runtime}</span>
+                  <span>Timeout: ${fn.timeout}s</span>
+                  <span>Memoria: ${fn.memory}MB</span>
+                </div>
+              </div>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              ${fn.state}
+            </span>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = `<div class="text-sm text-rose-400 p-4">Error: ${e.message}</div>`;
+      }
+    }
+
+    // 6. Secrets Manager
+    async function loadSecrets() {
+      const container = document.getElementById('secretsList');
+      container.innerHTML = '<div class="text-sm text-slate-400 p-4">Cargando secretos...</div>';
+      try {
+        const res = await fetch('/api/secrets');
+        const data = await res.json();
+        if (!data.secrets || data.secrets.length === 0) {
+          container.innerHTML = '<div class="text-sm text-slate-500 p-6 bg-slate-900 rounded-xl">No hay secretos en Secrets Manager.</div>';
+          return;
+        }
+
+        container.innerHTML = data.secrets.map((sec, idx) => `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <span class="text-xl">🔐</span>
+                <div>
+                  <h4 class="font-bold text-white font-mono text-sm">${sec.name}</h4>
+                  <span class="text-xs text-slate-400">${sec.description || 'Sin descripción'}</span>
+                </div>
+              </div>
+              <button onclick="toggleSecret(${idx})" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                <span id="btn-sec-${idx}">👁️ Revelar</span>
+              </button>
+            </div>
+            <pre id="val-sec-${idx}" class="hidden p-3 bg-slate-950 rounded-xl font-mono text-xs text-amber-400 border border-slate-800 overflow-x-auto">${sec.value}</pre>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = `<div class="text-sm text-rose-400 p-4">Error: ${e.message}</div>`;
+      }
+    }
+
+    function toggleSecret(idx) {
+      const pre = document.getElementById(`val-sec-${idx}`);
+      const btn = document.getElementById(`btn-sec-${idx}`);
+      if (pre.classList.contains('hidden')) {
+        pre.classList.remove('hidden');
+        btn.textContent = "🙈 Ocultar";
+      } else {
+        pre.classList.add('hidden');
+        btn.textContent = "👁️ Revelar";
+      }
+    }
+
+    // Auto load overview on start
+    window.addEventListener('DOMContentLoaded', () => {
+      loadOverview();
+    });
+  </script>
+</body>
+</html>

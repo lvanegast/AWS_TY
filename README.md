@@ -39,6 +39,18 @@ Asegúrate de que Docker Desktop esté abierto y ejecuta en PowerShell:
 .\scripts\aws-hub.ps1 status
 ```
 
+### 3. Abrir la Consola Gráfica Local (Web Dashboard)
+Abre tu navegador en:
+👉 **`http://localhost:3000`** (o ejecuta `.\scripts\aws-hub.ps1 dashboard`)
+
+Desde esta consola visual puedes:
+- Inspeccionar buckets y archivos de **S3**.
+- Explorar y editar registros de **DynamoDB**.
+- Monitorear colas de **SQS** y tópicos **SNS**.
+- Probar e invocar funciones **Lambda**.
+- Ver secretos de **Secrets Manager**.
+- Acceder a los proyectos de ejemplo.
+
 ### 3. Ejecutar Comandos de AWS sin Instalar Nada
 Puedes usar `awslocal` directamente a través del script de gestión:
 ```powershell
@@ -59,6 +71,7 @@ Puedes usar `awslocal` directamente a través del script de gestión:
   - **`01-serverless-pipeline`**: Pipeline serverless con S3, SQS, Lambda y DynamoDB.
   - **`02-container-api`**: Microservicio REST con Dockerfile propio que lee secretos de Secrets Manager y persiste en DynamoDB.
   - **`03-event-pubsub`**: Arquitectura orientada a eventos con tópico SNS y múltiples colas SQS suscritas.
+  - **`04-url-shortener`**: Acortador de URLs 100% Serverless con Frontend en S3, 4 Lambdas, DynamoDB y buffer de analítica con SQS.
 - **`templates/`**:
   - `.env.client.example`: Variables de entorno listas para copiar en tus nuevos proyectos.
   - `code-examples/`: Snippets de conexión en Node.js y Python.

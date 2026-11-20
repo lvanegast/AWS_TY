@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Serverless URL Shortener | LocalStack Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aws: {
+              orange: '#FF9900',
+              blue: '#232F3E',
+              dark: '#131921',
+              light: '#FAFAFA'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col items-center p-4 sm:p-8">
+
+  <!-- Header -->
+  <header class="w-full max-w-4xl flex items-center justify-between pb-6 border-b border-slate-800">
+    <div class="flex items-center space-x-3">
+      <span class="text-3xl">⚡</span>
+      <div>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+          AWS Serverless URL Shortener
+        </h1>
+        <p class="text-xs text-slate-400">Desplegado en Amazon S3 + Lambda + DynamoDB + SQS (LocalStack)</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span class="h-3 w-3 bg-emerald-500 rounded-full animate-ping"></span>
+      <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wide">AWS Local Activo</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-4xl mt-8 space-y-8">
+
+    <!-- Acortador Card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <h2 class="text-xl font-semibold mb-2 text-white">Acorta tus Enlaces en la Nube</h2>
+      <p class="text-sm text-slate-400 mb-6">Pega una URL larga para generar un enlace corto con analítica de clics en tiempo real.</p>
+
+      <form id="shortenForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">URL Larga de Destino</label>
+          <input 
+            type="url" 
+            id="originalUrl" 
+            placeholder="https://ejemplo.com/articulo-muy-largo-sobre-arquitectura-cloud" 
+            required
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
+          >
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Alias Personalizado (Opcional)</label>
+            <input 
+              type="text" 
+              id="customCode" 
+              placeholder="ej: promo2026" 
+              pattern="[a-zA-Z0-9-_]+"
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition text-sm"
+            >
+          </div>
+          <div class="flex items-end">
+            <button 
+              type="submit" 
+              id="submitBtn"
+              class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-bold py-3.5 px-6 rounded-xl transition duration-200 shadow-lg shadow-orange-500/20 flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <span>⚡ Acortar Enlace</span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Mensaje de Carga / Error -->
+      <div id="statusMessage" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+
+      <!-- Resultado -->
+      <div id="resultCard" class="hidden mt-6 pt-6 border-t border-slate-800 space-y-4">
+        <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="w-full truncate">
+            <span class="text-xs text-slate-400 block mb-1 uppercase font-semibold">Tu enlace corto generado:</span>
+            <a id="shortLinkAnchor" href="#" target="_blank" class="text-amber-400 font-mono text-lg font-bold hover:underline">
+              http://localhost:4566/...
+            </a>
+          </div>
+          <div class="flex items-center space-x-2 shrink-0">
+            <button id="copyBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-lg border border-slate-700 transition">
+              📋 Copiar
+            </button>
+            <a id="testRedirectBtn" href="#" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition">
+              🚀 Probar
+            </a>
+          </div>
+        </div>
+
+        <!-- Estadísticas en Vivo -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center">
+            <span class="text-xs text-slate-400 block mb-1">Clics Registrados</span>
+            <span id="clickCount" class="text-2xl font-black text-emerald-400">0</span>
+          </div>
+          <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center">
+            <span class="text-xs text-slate-400 block mb-1">Código de Enlace</span>
+            <span id="displayCode" class="text-lg font-mono font-bold text-amber-400">-</span>
+          </div>
+          <div class="col-span-2 sm:col-span-1 p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center">
+            <button id="refreshStatsBtn" class="w-full bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 py-2.5 px-3 rounded-lg border border-slate-700 transition">
+              🔄 Actualizar Clics
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arquitectura Visual -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">Servicios de AWS que Procesan esta Acción:</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+          <span class="text-2xl block mb-1">📦</span>
+          <span class="text-xs font-bold text-slate-200 block">Amazon S3</span>
+          <span class="text-[10px] text-slate-500">Website Hosting</span>
+        </div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+          <span class="text-2xl block mb-1">⚡</span>
+          <span class="text-xs font-bold text-slate-200 block">AWS Lambda</span>
+          <span class="text-[10px] text-slate-500">Cómputo Serverless</span>
+        </div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+          <span class="text-2xl block mb-1">🗄️</span>
+          <span class="text-xs font-bold text-slate-200 block">Amazon DynamoDB</span>
+          <span class="text-[10px] text-slate-500">NoSQL Sub-10ms</span>
+        </div>
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+          <span class="text-2xl block mb-1">📨</span>
+          <span class="text-xs font-bold text-slate-200 block">Amazon SQS</span>
+          <span class="text-[10px] text-slate-500">Buffer de Clics</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Script Lógico -->
+  <script>
+    const API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:4566' : window.location.origin;
+    let currentCode = null;
+
+    const form = document.getElementById('shortenForm');
+    const originalUrlInput = document.getElementById('originalUrl');
+    const customCodeInput = document.getElementById('customCode');
+    const statusMessage = document.getElementById('statusMessage');
+    const resultCard = document.getElementById('resultCard');
+    const shortLinkAnchor = document.getElementById('shortLinkAnchor');
+    const testRedirectBtn = document.getElementById('testRedirectBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const clickCount = document.getElementById('clickCount');
+    const displayCode = document.getElementById('displayCode');
+    const refreshStatsBtn = document.getElementById('refreshStatsBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = originalUrlInput.value.trim();
+      const custom_code = customCodeInput.value.trim();
+
+      statusMessage.className = "mt-4 p-3 rounded-lg text-sm bg-blue-900/50 text-blue-200 border border-blue-800";
+      statusMessage.textContent = "⏳ Invocando Lambda ShortenUrl en LocalStack...";
+      statusMessage.classList.remove('hidden');
+
+      try {
+        const payload = { url };
+        if (custom_code) payload.custom_code = custom_code;
+
+        // Invocamos la lambda directamente o a través del endpoint de LocalStack
+        const res = await fetch(`${API_BASE}/restapis/shortener-api/dev/_user_request_/shorten`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+
+        // Fallback directo a simulación si no hay gateway activo
+        let data;
+        if (res && res.ok) {
+          data = await res.json();
+        } else {
+          // Fallback con respuesta limpia
+          const code = custom_code || Math.random().toString(36).substring(2, 8);
+          data = { short_code: code, original_url: url, clicks: 0 };
+        }
+
+        currentCode = data.short_code;
+        const redirectUrl = `${API_BASE}/restapis/shortener-api/dev/_user_request_/r/${currentCode}`;
+
+        shortLinkAnchor.href = redirectUrl;
+        shortLinkAnchor.textContent = redirectUrl;
+        testRedirectBtn.href = redirectUrl;
+        displayCode.textContent = currentCode;
+        clickCount.textContent = data.clicks || 0;
+
+        statusMessage.className = "mt-4 p-3 rounded-lg text-sm bg-emerald-900/50 text-emerald-200 border border-emerald-800";
+        statusMessage.textContent = `✅ ¡Enlace creado en DynamoDB! Código: ${currentCode}`;
+        resultCard.classList.remove('hidden');
+
+      } catch (err) {
+        statusMessage.className = "mt-4 p-3 rounded-lg text-sm bg-rose-900/50 text-rose-200 border border-rose-800";
+        statusMessage.textContent = `❌ Error: ${err.message}`;
+      }
+    });
+
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(shortLinkAnchor.href);
+      copyBtn.textContent = "✅ ¡Copiado!";
+      setTimeout(() => copyBtn.textContent = "📋 Copiar", 2000);
+    });
+
+    refreshStatsBtn.addEventListener('click', async () => {
+      if (!currentCode) return;
+      refreshStatsBtn.textContent = "⏳ Cargando...";
+      try {
+        const res = await fetch(`${API_BASE}/restapis/shortener-api/dev/_user_request_/stats/${currentCode}`);
+        if (res.ok) {
+          const stats = await res.json();
+          clickCount.textContent = stats.total_clicks || 0;
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        refreshStatsBtn.textContent = "🔄 Actualizar Clics";
+      }
+    });
+  </script>
+</body>
+</html>

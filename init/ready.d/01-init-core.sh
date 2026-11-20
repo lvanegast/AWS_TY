@@ -40,6 +40,16 @@ awslocal ssm put-parameter \
     --value "local-development" \
     --overwrite || true
 
+# 7. Recursos para URL Shortener
+echo "🔗 Inicializando recursos para URL Shortener (DynamoDB y SQS)..."
+awslocal dynamodb create-table \
+    --table-name ShortUrls \
+    --attribute-definitions AttributeName=short_code,AttributeType=S \
+    --key-schema AttributeName=short_code,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST || true
+
+awslocal sqs create-queue --queue-name url-clicks-queue || true
+
 echo "=========================================================="
 echo "✅ [INIT HOOK] Recursos base creados exitosamente."
 echo "=========================================================="

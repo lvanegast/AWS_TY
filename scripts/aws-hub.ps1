@@ -11,7 +11,7 @@
 
 param (
     [Parameter(Position=0)]
-    [ValidateSet("start", "stop", "restart", "status", "logs", "reset", "awslocal", "help")]
+    [ValidateSet("start", "stop", "restart", "status", "logs", "reset", "awslocal", "dashboard", "gui", "help")]
     [string]$Action = "help",
 
     [Parameter(Position=1, ValueFromRemainingArguments=$true)]
@@ -96,6 +96,7 @@ switch ($Action.ToLower()) {
                 }
             }}
             Write-Host "🔗 Endpoint local: http://localhost:4566" -ForegroundColor Green
+            Write-Host "🖥️ Consola Gráfica Local: http://localhost:3000" -ForegroundColor Cyan
             Write-Host "🌐 Red Docker: aws-local-net (disponible para otros contenedores)" -ForegroundColor Green
         } catch {
             Write-Host "❌ No se pudo conectar a LocalStack (puerto 4566 no responde)." -ForegroundColor Red
@@ -131,6 +132,16 @@ switch ($Action.ToLower()) {
         }
         $cmd = "awslocal " + ($ExtraArgs -join " ")
         docker exec -it localstack-hub bash -c $cmd
+    }
+
+    "dashboard" {
+        Show-Header
+        Write-Host "🌐 Abriendo la Consola Gráfica en tu navegador..." -ForegroundColor Cyan
+        Start-Process "http://localhost:3000"
+    }
+
+    "gui" {
+        & $PSCommandPath dashboard
     }
 
     default {
