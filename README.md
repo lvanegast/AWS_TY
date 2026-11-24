@@ -39,17 +39,24 @@ Asegúrate de que Docker Desktop esté abierto y ejecuta en PowerShell:
 .\scripts\aws-hub.ps1 status
 ```
 
-### 3. Abrir la Consola Gráfica Local (Web Dashboard)
+### 3. Abrir la Consola Gráfica Local (AWS Management Console Clone)
 Abre tu navegador en:
 👉 **`http://localhost:3000`** (o ejecuta `.\scripts\aws-hub.ps1 dashboard`)
 
-Desde esta consola visual puedes:
-- Inspeccionar buckets y archivos de **S3**.
-- Explorar y editar registros de **DynamoDB**.
-- Monitorear colas de **SQS** y tópicos **SNS**.
-- Probar e invocar funciones **Lambda**.
-- Ver secretos de **Secrets Manager**.
-- Acceder a los proyectos de ejemplo.
+Diseñada como un clon 1:1 de la **Consola Oficial de AWS Management Console** (con sistema de diseño Cloudscape):
+- Barra superior oficial de AWS (`#232F3E`), selector de región (`us-east-1 (N. Virginia)`), buscador global de servicios y CloudShell interactivo.
+- Explorador de tablas DynamoDB con inspector de registros (split-panel).
+- Navegador de buckets y objetos S3 con enlaces locales.
+- Monitor de colas SQS y tópicos SNS con envío de mensajes de prueba.
+- Ejecutor e invocador de funciones Lambda en vivo.
+- Revelador de secretos de Secrets Manager.
+
+### 4. Conectar Extensiones de Escritorio (VS Code AWS Toolkit / NoSQL Workbench)
+Si prefieres ver tus recursos directamente en tu editor o en herramientas de escritorio de AWS:
+```powershell
+.\scripts\setup-aws-profile.ps1
+```
+Esto creará el perfil `localstack` en `~/.aws/credentials` y `~/.aws/config`, permitiendo que la extensión oficial **AWS Toolkit para VS Code** o la app **NoSQL Workbench** se conecten automáticamente a tu clúster local.
 
 ### 3. Ejecutar Comandos de AWS sin Instalar Nada
 Puedes usar `awslocal` directamente a través del script de gestión:

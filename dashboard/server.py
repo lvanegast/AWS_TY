@@ -142,14 +142,42 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 
                 selected_table = query.get("table", [None])[0]
                 table_items = []
+                table_desc = None
+                tables_meta = []
+                for t in table_names:
+                    try:
+                        desc = dynamodb.describe_table(TableName=t).get("Table", {})
+                        key_schema = desc.get("KeySchema", [])
+                        pk = next((k["AttributeName"] for k in key_schema if k.get("KeyType") == "HASH"), "-")
+                        sk = next((k["AttributeName"] for k in key_schema if k.get("KeyType") == "RANGE"), "-")
+                        tables_meta.append({
+                            "name": t,
+                            "status": desc.get("TableStatus", "ACTIVE"),
+                            "item_count": desc.get("ItemCount", 0),
+                            "size_bytes": desc.get("TableSizeBytes", 0),
+                            "partition_key": pk,
+                            "sort_key": sk,
+                            "billing_mode": desc.get("BillingModeSummary", {}).get("BillingMode", "PAY_PER_REQUEST"),
+                            "arn": desc.get("TableArn", "")
+                        })
+                    except Exception:
+                        tables_meta.append({
+                            "name": t, "status": "ACTIVE", "item_count": 0,
+                            "size_bytes": 0, "partition_key": "-", "sort_key": "-",
+                            "billing_mode": "PAY_PER_REQUEST", "arn": ""
+                        })
+
                 if selected_table and selected_table in table_names:
                     res_db = get_boto_resource("dynamodb")
                     tbl = res_db.Table(selected_table)
                     table_items = tbl.scan(Limit=50).get("Items", [])
+                    table_desc = next((tm for tm in tables_meta if tm["name"] == selected_table), None)
 
                 self._send_json(200, {
                     "tables": table_names,
+                    "tables_meta": tables_meta,
                     "selected_table": selected_table,
+                    "table_desc": table_desc,
                     "items": table_items
                 })
             except Exception as e:
